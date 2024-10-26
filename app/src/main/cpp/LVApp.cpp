@@ -118,6 +118,7 @@ void LVApp::lv_loop_task() {
     }
     window = nullptr;
     LOGD("LV App Stopped!!");
+    delete this;
 }
 
 void LVApp::stop() {
@@ -147,4 +148,8 @@ void LVApp::setApp(const char *name) {
 void LVApp::setSize(int w, int h) {
     app_width = w;
     app_height = h;
+}
+
+LVApp::~LVApp() {
+    LOGI("LVApp::~LVApp()!!");
 }

@@ -35,6 +35,8 @@ private:
     static void lv_touch_cb_static(lv_indev_t *indev_drv, lv_indev_data_t *data);
 
 public:
+    ~LVApp();
+
     void start(ANativeWindow *window);
 
     void setApp(const char *name);
