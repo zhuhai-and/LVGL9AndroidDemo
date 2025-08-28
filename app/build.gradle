@@ -1,7 +1,8 @@
 apply plugin: 'com.android.application'
 
 android {
-    compileSdk 34
+    compileSdk 36
+    namespace "com.hzy.lvgl.demo"
     signingConfigs {
         demokey {
             storeFile file('demokey.jks')
@@ -13,7 +14,7 @@ android {
     defaultConfig {
         applicationId "com.hzy.lvgl.demo9"
         minSdkVersion 21
-        targetSdkVersion 34
+        targetSdkVersion 36
         versionCode 1_00_03
         versionName "1.0.3"
         externalNativeBuild {
