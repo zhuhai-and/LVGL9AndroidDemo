@@ -1,5 +1,5 @@
 LOCAL_PATH := $(call my-dir)
-LV_PATH := $(LOCAL_PATH)/lvgl-9.3.0/
+LV_PATH := $(LOCAL_PATH)/lvgl-9.5.0/
 
 LOCAL_SHORT_COMMANDS := true
 LOCAL_ARM_NEON := true
@@ -20,6 +20,7 @@ LOCAL_SRC_FILES := \
 	$(wildcard $(LV_PATH)/src/extra/**/**/*.c) \
 	$(wildcard $(LV_PATH)/src/misc/**/**/*.c) \
 	$(wildcard $(LV_PATH)/src/draw/**/**/*.c) \
+	$(wildcard $(LV_PATH)/demos/*.c) \
 	$(wildcard $(LV_PATH)/demos/**/*.c) \
 	$(wildcard $(LV_PATH)/demos/**/**/*.c) \
 	$(wildcard $(LOCAL_PATH)/**/*.c) \
