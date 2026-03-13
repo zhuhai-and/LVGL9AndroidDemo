@@ -42,7 +42,7 @@ const int PIECE_PAWN = 6;
 
 // 其他常数
 const int MAX_GEN_MOVES = 128; // 最大的生成走法数
-const int MAX_MOVES = 128;     // 最大的历史走法数
+const int MAX_MOVES = 1024;     // 最大的历史走法数
 const int LIMIT_DEPTH = 4;    // 最大的搜索深度
 const int MATE_VALUE = 10000;  // 最高分值，即将死的分值
 const int BAN_VALUE = MATE_VALUE - 100; // 长将判负的分值，低于该值将不写入置换表
@@ -56,8 +56,9 @@ const int HASH_SIZE = 1 << 16; // 置换表大小
 const int HASH_ALPHA = 1;      // ALPHA节点的置换表项
 const int HASH_BETA = 2;       // BETA节点的置换表项
 const int HASH_PV = 3;         // PV节点的置换表项
-const int HIS_SIZE = 2048;
+const int HIS_SIZE = 65536;    // 历史表大小，必须覆盖所有可能的 move 值 (sqSrc + sqDst * 256)
 const int BOOK_SIZE = 600;   // 开局库大小
+const int MAX_SEARCH_DEPTH = 32; // 最大搜索深度限制，用于杀手走法表等
 
 // 判断棋子是否在棋盘中的数组
 static const int8_t ccInBoard[256] = {
@@ -583,25 +584,39 @@ struct PositionStruct {
         zobr.Xor(Zobrist.Player);
     }
     void AddPiece(int sq, int pc) { // 在棋盘上放一枚棋子
+        if (pc == 0) return; // 增加防御性检查
         ucpcSquares[sq] = pc;
         // 红方加分，黑方(注意"cucvlPiecePos"取值要颠倒)减分
         if (pc < 16) {
-            vlWhite += cucvlPiecePos[pc - 8][sq];
-            zobr.Xor(Zobrist.Table[pc - 8][sq]);
+            int idx = pc - 8;
+            if (idx >= 0 && idx < 7) {
+                vlWhite += cucvlPiecePos[idx][sq];
+                zobr.Xor(Zobrist.Table[idx][sq]);
+            }
         } else {
-            vlBlack += cucvlPiecePos[pc - 16][SQUARE_FLIP(sq)];
-            zobr.Xor(Zobrist.Table[pc - 9][sq]);
+            int idx = pc - 16;
+            if (idx >= 0 && idx < 7) {
+                vlBlack += cucvlPiecePos[idx][SQUARE_FLIP(sq)];
+                zobr.Xor(Zobrist.Table[pc - 9][sq]);
+            }
         }
     }
     void DelPiece(int sq, int pc) { // 从棋盘上拿走一枚棋子
+        if (pc == 0) return; // 增加防御性检查
         ucpcSquares[sq] = 0;
         // 红方减分，黑方(注意"cucvlPiecePos"取值要颠倒)加分
         if (pc < 16) {
-            vlWhite -= cucvlPiecePos[pc - 8][sq];
-            zobr.Xor(Zobrist.Table[pc - 8][sq]);
+            int idx = pc - 8;
+            if (idx >= 0 && idx < 7) {
+                vlWhite -= cucvlPiecePos[idx][sq];
+                zobr.Xor(Zobrist.Table[idx][sq]);
+            }
         } else {
-            vlBlack -= cucvlPiecePos[pc - 16][SQUARE_FLIP(sq)];
-            zobr.Xor(Zobrist.Table[pc - 9][sq]);
+            int idx = pc - 16;
+            if (idx >= 0 && idx < 7) {
+                vlBlack -= cucvlPiecePos[idx][SQUARE_FLIP(sq)];
+                zobr.Xor(Zobrist.Table[pc - 9][sq]);
+            }
         }
     }
     int Evaluate(void) const {      // 局面评价函数
@@ -1102,7 +1117,7 @@ struct BookItem {
 static struct {
     int mvResult;                  // 电脑走的棋
     int *nHistoryTable;      // 历史表
-    int mvKillers[LIMIT_DEPTH][2]; // 杀手走法表
+    int mvKillers[MAX_SEARCH_DEPTH][2]; // 杀手走法表
     HashItem *HashTable; // 置换表
     int nBookSize;                 // 开局库大小
     BookItem* BookTable; // 开局库
@@ -1123,7 +1138,11 @@ static void LoadBook() {
     if (Search.nBookSize > BOOK_SIZE) {
         Search.nBookSize = BOOK_SIZE;
     }
+    // 确保 BookTable 是对齐的。如果 BookData 本身不对齐，bsearch 可能会在某些 ARM 平台上崩溃
     Search.BookTable = (BookItem*)BookData;
+    if (((uintptr_t)Search.BookTable & 0x3) != 0) {
+        printf("WARNING: BookTable is NOT 4-byte aligned!\n");
+    }
 }
 
 static int CompareBook(const void *lpbk1, const void *lpbk2) {
@@ -1278,7 +1297,10 @@ static int CompareMvvLva(const void *lpmv1, const void *lpmv2) {
 
 // "qsort"按历史表排序的比较函数
 static int CompareHistory(const void *lpmv1, const void *lpmv2) {
-    return Search.nHistoryTable[*(int *) lpmv2] - Search.nHistoryTable[*(int *) lpmv1];
+    int mv1 = *(int *) lpmv1;
+    int mv2 = *(int *) lpmv2;
+    if (mv1 < 0 || mv1 >= HIS_SIZE || mv2 < 0 || mv2 >= HIS_SIZE) return 0;
+    return Search.nHistoryTable[mv2] - Search.nHistoryTable[mv1];
 }
 
 
@@ -1297,8 +1319,12 @@ struct SortStruct {
 
     void Init(int mvHash_) { // 初始化，设定置换表走法和两个杀手走法
         mvHash = mvHash_;
-        mvKiller1 = Search.mvKillers[pos.nDistance][0];
-        mvKiller2 = Search.mvKillers[pos.nDistance][1];
+        if (pos.nDistance < MAX_SEARCH_DEPTH) {
+            mvKiller1 = Search.mvKillers[pos.nDistance][0];
+            mvKiller2 = Search.mvKillers[pos.nDistance][1];
+        } else {
+            mvKiller1 = mvKiller2 = 0;
+        }
         nPhase = PHASE_HASH;
     }
     int Next(void); // 得到下一个走法
@@ -1358,11 +1384,14 @@ int SortStruct::Next(void) {
 // 对最佳走法的处理
 inline void SetBestMove(int mv, int nDepth) {
     int *lpmvKillers;
+    if (mv >= HIS_SIZE || mv < 0) return; // 防御性检查
     Search.nHistoryTable[mv] += nDepth * nDepth;
-    lpmvKillers = Search.mvKillers[pos.nDistance];
-    if (lpmvKillers[0] != mv) {
-        lpmvKillers[1] = lpmvKillers[0];
-        lpmvKillers[0] = mv;
+    if (pos.nDistance < MAX_SEARCH_DEPTH) {
+        lpmvKillers = Search.mvKillers[pos.nDistance];
+        if (lpmvKillers[0] != mv) {
+            lpmvKillers[1] = lpmvKillers[0];
+            lpmvKillers[0] = mv;
+        }
     }
 }
 
@@ -1570,7 +1599,7 @@ static void SearchMain(void) {
 
     // 初始化
     memset(Search.nHistoryTable, 0, HIS_SIZE * sizeof(int));       // 清空历史表
-    memset(Search.mvKillers, 0, LIMIT_DEPTH * 2 * sizeof(int)); // 清空杀手走法表
+    memset(Search.mvKillers, 0, MAX_SEARCH_DEPTH * 2 * sizeof(int)); // 清空杀手走法表
     memset(Search.HashTable, 0, HASH_SIZE * sizeof(HashItem));  // 清空置换表
     t = (int)clock();       // 初始化定时器
     pos.nDistance = 0; // 初始步数
