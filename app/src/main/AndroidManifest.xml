@@ -23,10 +23,6 @@
             </intent-filter>
         </activity>
         <activity android:name=".ui.MainActivity" />
-        <activity
-            android:name=".ui.FullScreenActivity"
-            android:screenOrientation="landscape"
-            android:theme="@style/AppTheme.NoActionBar.FullScreen" />
         <activity android:name=".ui.PartScreenActivity" />
     </application>
 

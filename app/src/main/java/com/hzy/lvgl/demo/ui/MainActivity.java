@@ -1,38 +1,52 @@
 package com.hzy.lvgl.demo.ui;
 
 import android.content.Intent;
+import android.content.pm.ActivityInfo;
 import android.os.Bundle;
 
 import androidx.appcompat.app.AppCompatActivity;
+import androidx.recyclerview.widget.LinearLayoutManager;
 
-import com.blankj.utilcode.util.ActivityUtils;
 import com.hzy.lvgl.demo.databinding.ActivityMainBinding;
+import com.hzy.lvgl.demo.model.DemoEntry;
+import com.hzy.lvgl.demo.ui.adapter.DemoAdapter;
 
+import java.util.ArrayList;
+import java.util.List;
 
 public class MainActivity extends AppCompatActivity {
 
     private ActivityMainBinding mB;
+    private final List<DemoEntry> mDemoList = new ArrayList<>();
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         mB = ActivityMainBinding.inflate(getLayoutInflater());
         setContentView(mB.getRoot());
-        mB.btnWidgets.setOnClickListener(v -> openPartPage("widgets"));
-        mB.btnMusic.setOnClickListener(v -> openPartPage("music"));
-        mB.btnBenchmark.setOnClickListener(v -> openPartPage("benchmark"));
-        mB.btnLarge.setOnClickListener(v -> ActivityUtils.startActivity(FullScreenActivity.class));
+        initData();
+        initView();
     }
 
-    private void openPartPage(String name) {
-        openPartPage(name, 480, 320);
+    private void initData() {
+        mDemoList.add(new DemoEntry("Demo Widgets", "widgets", 480, 320, ActivityInfo.SCREEN_ORIENTATION_PORTRAIT));
+        mDemoList.add(new DemoEntry("Widgets Portrait", "widgets", 320, 480, ActivityInfo.SCREEN_ORIENTATION_PORTRAIT));
+        mDemoList.add(new DemoEntry("Demo Music", "music", 480, 320, ActivityInfo.SCREEN_ORIENTATION_LANDSCAPE));
+        mDemoList.add(new DemoEntry("Demo Benchmark", "benchmark", 480, 320, ActivityInfo.SCREEN_ORIENTATION_PORTRAIT));
     }
 
-    private void openPartPage(String name, int width, int height) {
+    private void initView() {
+        DemoAdapter adapter = new DemoAdapter(mDemoList, this::openPartPage);
+        mB.rvDemoList.setLayoutManager(new LinearLayoutManager(this));
+        mB.rvDemoList.setAdapter(adapter);
+    }
+
+    private void openPartPage(DemoEntry entry) {
         Intent intent = new Intent(this, PartScreenActivity.class);
-        intent.putExtra("app", name);
-        intent.putExtra("width", width);
-        intent.putExtra("height", height);
+        intent.putExtra("app", entry.getName());
+        intent.putExtra("width", entry.getWidth());
+        intent.putExtra("height", entry.getHeight());
+        intent.putExtra("orientation", entry.getScreenOrientation());
         startActivity(intent);
     }
 }

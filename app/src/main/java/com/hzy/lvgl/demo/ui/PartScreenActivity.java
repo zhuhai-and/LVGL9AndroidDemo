@@ -1,8 +1,11 @@
 package com.hzy.lvgl.demo.ui;
 
 import android.annotation.SuppressLint;
+import android.content.pm.ActivityInfo;
 import android.os.Bundle;
+import android.view.MenuItem;
 
+import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.constraintlayout.widget.ConstraintSet;
@@ -17,7 +20,16 @@ public class PartScreenActivity extends AppCompatActivity {
         super.onCreate(savedInstanceState);
         mB = ActivityPartScreenBinding.inflate(getLayoutInflater());
         setContentView(mB.getRoot());
+
+        if (getSupportActionBar() != null) {
+            getSupportActionBar().setDisplayHomeAsUpEnabled(true);
+        }
+
         String name = getIntent().getStringExtra("app");
+        int orientation = getIntent().getIntExtra("orientation", ActivityInfo.SCREEN_ORIENTATION_UNSPECIFIED);
+        if (orientation != ActivityInfo.SCREEN_ORIENTATION_UNSPECIFIED) {
+            setRequestedOrientation(orientation);
+        }
         if (name != null) {
             int width = getIntent().getIntExtra("width", 0);
             int height = getIntent().getIntExtra("height", 0);
@@ -29,6 +41,16 @@ public class PartScreenActivity extends AppCompatActivity {
             constraintSet.applyTo(mB.lvRoot);
             mB.lvView.setApp(name);
             mB.lvView.setSize(width, height);
+            setTitle(name);
         }
+    }
+
+    @Override
+    public boolean onOptionsItemSelected(@NonNull MenuItem item) {
+        if (item.getItemId() == android.R.id.home) {
+            finish();
+            return true;
+        }
+        return super.onOptionsItemSelected(item);
     }
 }
