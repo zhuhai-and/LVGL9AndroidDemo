@@ -53,13 +53,29 @@ typedef struct {
 lv_obj_t *lv_select;
 lv_obj_t *lv_board;
 vector<lv_piece *> lv_pieces;
+const extern lv_font_t teng_18;
 
 // "DrawSquare"参数
 const BOOL DRAW_SELECTED = TRUE;
 
 //消息通知
 static void MessageBoxMute(const char *txt) {
-    printf("%s", txt);
+    auto label = lv_label_create(lv_layer_top());
+    lv_label_set_text(label, txt);
+    lv_obj_set_style_text_font(label, &teng_18, 0);
+    lv_obj_set_style_text_color(label, lv_color_white(), 0);
+    lv_obj_set_style_bg_color(label, lv_color_black(), 0);
+    lv_obj_set_style_bg_opa(label, LV_OPA_70, 0);
+    lv_obj_set_style_pad_all(label, 10, 0);
+    lv_obj_set_style_radius(label, 5, 0);
+    lv_obj_center(label);
+    
+    // Auto delete after 2 seconds
+    lv_timer_create([](lv_timer_t *t) {
+        auto obj = (lv_obj_t *)lv_timer_get_user_data(t);
+        lv_obj_del(obj);
+        lv_timer_del(t);
+    }, 2000, label);
 }
 
 static void RefreshBoard() {
@@ -290,6 +306,37 @@ static void DrawInitBoard() {
     lv_select = lv_img_create(act);
     lv_img_set_src(lv_select, &selected);
     lv_obj_set_pos(lv_select, (int16_t) xx, (int16_t) yy);
+
+    // 重新开始按钮
+    auto btn_restart = lv_btn_create(act);
+    lv_obj_set_size(btn_restart, 120, 40);
+    lv_obj_set_pos(btn_restart, 30, 400);
+    auto label_restart = lv_label_create(btn_restart);
+    lv_label_set_text(label_restart, "重新开始");
+    lv_obj_set_style_text_font(label_restart, &teng_18, 0);
+    lv_obj_center(label_restart);
+    lv_obj_add_event_cb(btn_restart, [](lv_event_t *e) {
+        lv_obj_clean(lv_scr_act());
+        lv_chess_start();
+    }, LV_EVENT_CLICKED, nullptr);
+
+    // 悔棋按钮
+    auto btn_undo = lv_btn_create(act);
+    lv_obj_set_size(btn_undo, 120, 40);
+    lv_obj_set_pos(btn_undo, 180, 400);
+    auto label_undo = lv_label_create(btn_undo);
+    lv_label_set_text(label_undo, "悔棋");
+    lv_obj_set_style_text_font(label_undo, &teng_18, 0);
+    lv_obj_center(label_undo);
+    lv_obj_add_event_cb(btn_undo, [](lv_event_t *e) {
+        if (pos.nMoveNum > 2) {
+            pos.UndoMakeMove(); // 撤销电脑走的一步
+            pos.UndoMakeMove(); // 撤销玩家走的一步
+            Xqwl.sqSelected = 0;
+            Xqwl.mvLast = pos.mvsList[pos.nMoveNum - 1].wmv;
+            DrawSquare(0); // 刷新棋盘
+        }
+    }, LV_EVENT_CLICKED, nullptr);
 }
 
 //开始游戏
