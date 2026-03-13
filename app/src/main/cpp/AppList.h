@@ -4,6 +4,7 @@
 #include <iostream>
 #include <map>
 #include <lv_demos.h>
+#include "chess/lvChess.h"
 
 using namespace std;
 
@@ -12,6 +13,7 @@ const map<string, void (*)(void)> lv_ci_example_list{
         {"benchmark", lv_demo_benchmark},
         {"widgets",   lv_demo_widgets},
         {"music",     lv_demo_music},
+        {"chess",     lv_chess_start},
 };
 
 #endif //LVGLPORTANDROID_APPLIST_H

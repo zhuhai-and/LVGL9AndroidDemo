@@ -72,8 +72,10 @@ void LVApp::start(ANativeWindow *win) {
     ANativeWindow_setBuffersGeometry(window, app_width, app_height, WINDOW_FORMAT_RGB_565);
     LOGD("LV Screen [%d x %d]", app_width, app_height);
     is_running = true;
-    thread lv_thread(&LVApp::lv_loop_task, this);
-    lv_thread.detach();
+    if (m_thread.joinable()) {
+        m_thread.join();
+    }
+    m_thread = thread(&LVApp::lv_loop_task, this);
 }
 
 void LVApp::lv_loop_task() {
@@ -118,11 +120,13 @@ void LVApp::lv_loop_task() {
     }
     window = nullptr;
     LOGD("LV App Stopped!!");
-    delete this;
 }
 
 void LVApp::stop() {
     is_running = false;
+    if (m_thread.joinable()) {
+        m_thread.join();
+    }
 }
 
 void LVApp::onTouch(int touch, int x, int y) {
@@ -151,5 +155,6 @@ void LVApp::setSize(int w, int h) {
 }
 
 LVApp::~LVApp() {
+    stop();
     LOGI("LVApp::~LVApp()!!");
 }

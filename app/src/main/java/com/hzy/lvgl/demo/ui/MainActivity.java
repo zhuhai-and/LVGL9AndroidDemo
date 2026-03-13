@@ -31,6 +31,7 @@ public class MainActivity extends AppCompatActivity {
     private void initData() {
         mDemoList.add(new DemoEntry("Demo Widgets", "widgets", 480, 320, ActivityInfo.SCREEN_ORIENTATION_PORTRAIT));
         mDemoList.add(new DemoEntry("Widgets Portrait", "widgets", 320, 480, ActivityInfo.SCREEN_ORIENTATION_PORTRAIT));
+        mDemoList.add(new DemoEntry("Chinese Chess", "chess", 320, 480, ActivityInfo.SCREEN_ORIENTATION_PORTRAIT));
         mDemoList.add(new DemoEntry("Demo Music", "music", 480, 320, ActivityInfo.SCREEN_ORIENTATION_LANDSCAPE));
         mDemoList.add(new DemoEntry("Demo Benchmark", "benchmark", 480, 320, ActivityInfo.SCREEN_ORIENTATION_PORTRAIT));
     }

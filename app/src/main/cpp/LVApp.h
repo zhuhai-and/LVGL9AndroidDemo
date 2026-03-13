@@ -19,6 +19,7 @@ private:
     string app_name;
     atomic<int> isTouch, touchX, touchY;
     atomic<bool> is_running = false;
+    std::thread m_thread;
 
     void lv_flush_callback(lv_display_t *disp, const lv_area_t *area, uint8_t *px_map);
 
