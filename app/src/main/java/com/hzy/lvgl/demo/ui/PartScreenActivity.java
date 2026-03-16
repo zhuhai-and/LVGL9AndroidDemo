@@ -9,6 +9,9 @@ import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.constraintlayout.widget.ConstraintSet;
+import androidx.core.graphics.Insets;
+import androidx.core.view.ViewCompat;
+import androidx.core.view.WindowInsetsCompat;
 
 import com.hzy.lvgl.demo.databinding.ActivityPartScreenBinding;
 
@@ -20,6 +23,12 @@ public class PartScreenActivity extends AppCompatActivity {
         super.onCreate(savedInstanceState);
         mB = ActivityPartScreenBinding.inflate(getLayoutInflater());
         setContentView(mB.getRoot());
+        setSupportActionBar(mB.partToolbar);
+        ViewCompat.setOnApplyWindowInsetsListener(mB.getRoot(), (v, insets) -> {
+            Insets systemBars = insets.getInsets(WindowInsetsCompat.Type.systemBars());
+            v.setPadding(systemBars.left, systemBars.top, systemBars.right, systemBars.bottom);
+            return insets;
+        });
 
         if (getSupportActionBar() != null) {
             getSupportActionBar().setDisplayHomeAsUpEnabled(true);
@@ -41,7 +50,7 @@ public class PartScreenActivity extends AppCompatActivity {
             constraintSet.applyTo(mB.lvRoot);
             mB.lvView.setApp(name);
             mB.lvView.setSize(width, height);
-            setTitle(name);
+            setTitle(getIntent().getStringExtra("title"));
         }
     }
 

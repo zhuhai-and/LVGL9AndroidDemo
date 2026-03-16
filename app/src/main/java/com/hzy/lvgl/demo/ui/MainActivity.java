@@ -11,6 +11,10 @@ import com.hzy.lvgl.demo.databinding.ActivityMainBinding;
 import com.hzy.lvgl.demo.model.DemoEntry;
 import com.hzy.lvgl.demo.ui.adapter.DemoAdapter;
 
+import androidx.core.graphics.Insets;
+import androidx.core.view.ViewCompat;
+import androidx.core.view.WindowInsetsCompat;
+
 import java.util.ArrayList;
 import java.util.List;
 
@@ -24,6 +28,12 @@ public class MainActivity extends AppCompatActivity {
         super.onCreate(savedInstanceState);
         mB = ActivityMainBinding.inflate(getLayoutInflater());
         setContentView(mB.getRoot());
+        setSupportActionBar(mB.mainToolbar);
+        ViewCompat.setOnApplyWindowInsetsListener(mB.getRoot(), (v, insets) -> {
+            Insets systemBars = insets.getInsets(WindowInsetsCompat.Type.systemBars());
+            v.setPadding(systemBars.left, systemBars.top, systemBars.right, systemBars.bottom);
+            return insets;
+        });
         initData();
         initView();
     }
@@ -45,6 +55,7 @@ public class MainActivity extends AppCompatActivity {
     private void openPartPage(DemoEntry entry) {
         Intent intent = new Intent(this, PartScreenActivity.class);
         intent.putExtra("app", entry.getName());
+        intent.putExtra("title", entry.getTitle());
         intent.putExtra("width", entry.getWidth());
         intent.putExtra("height", entry.getHeight());
         intent.putExtra("orientation", entry.getScreenOrientation());
