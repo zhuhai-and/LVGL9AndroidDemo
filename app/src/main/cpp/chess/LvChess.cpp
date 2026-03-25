@@ -69,23 +69,23 @@ static void MessageBoxMute(const char *txt) {
     lv_obj_set_style_pad_all(label, 10, 0);
     lv_obj_set_style_radius(label, 5, 0);
     lv_obj_center(label);
-    
+
     // Auto delete after 2 seconds using animation (safer than global timer)
     lv_anim_t a;
     lv_anim_init(&a);
     lv_anim_set_var(&a, label);
     lv_anim_set_duration(&a, 2000);
-    lv_anim_set_values(&a, 255, 254); 
+    lv_anim_set_values(&a, 255, 254);
     // Animation automatically stops if the label is deleted by lv_obj_clean()
-    lv_anim_set_completed_cb(&a, [](lv_anim_t * anim) {
-        lv_obj_delete_async((lv_obj_t *)anim->var);
+    lv_anim_set_completed_cb(&a, [](lv_anim_t *anim) {
+        lv_obj_delete_async((lv_obj_t *) anim->var);
     });
     lv_anim_start(&a);
 }
 
 // 自动置空回调
 static void on_obj_delete_cb(lv_event_t *e) {
-    lv_obj_t **ptr = (lv_obj_t **)lv_event_get_user_data(e);
+    lv_obj_t **ptr = (lv_obj_t **) lv_event_get_user_data(e);
     if (ptr) {
         *ptr = nullptr;
     }
@@ -99,7 +99,7 @@ static void BindObjLife(lv_obj_t *obj, lv_obj_t **ptr) {
 
 // 停止所有棋子动画并解绑
 static void ClearAllPieces() {
-    for (auto p : lv_pieces) {
+    for (auto p: lv_pieces) {
         if (p) {
             if (p->obj) {
                 // 移除回调，防止 delete p 后回调触发导致野指针写入
@@ -114,22 +114,23 @@ static void ClearAllPieces() {
 
 // 移动动画回调
 static void anim_x_cb(void *var, int32_t v) {
-    lv_obj_set_x((lv_obj_t *)var, v);
+    lv_obj_set_x((lv_obj_t *) var, v);
 }
+
 static void anim_y_cb(void *var, int32_t v) {
-    lv_obj_set_y((lv_obj_t *)var, v);
+    lv_obj_set_y((lv_obj_t *) var, v);
 }
 
 // 呼吸动画回调
 static void anim_zoom_cb(void *var, int32_t v) {
-    lv_img_set_zoom((lv_obj_t *)var, (uint16_t)v);
+    lv_img_set_zoom((lv_obj_t *) var, (uint16_t) v);
 }
 
 static void StartBreatheAnim(lv_obj_t *obj) {
     if (!obj) return;
     // [原理] 检查对象是否有效且不在删除队列中
-    if (lv_obj_is_valid(obj) == false) return; 
-    
+    if (lv_obj_is_valid(obj) == false) return;
+
     if (lv_anim_get(obj, anim_zoom_cb) != nullptr) {
         return;
     }
@@ -138,7 +139,7 @@ static void StartBreatheAnim(lv_obj_t *obj) {
     lv_anim_set_var(&a, obj);
     lv_anim_set_values(&a, 226, 256);
     lv_anim_set_duration(&a, 500); // LVGL 9 使用 duration
-    lv_anim_set_playback_duration(&a, 500); 
+    lv_anim_set_playback_duration(&a, 500);
     lv_anim_set_repeat_count(&a, LV_ANIM_REPEAT_INFINITE);
     lv_anim_set_path_cb(&a, lv_anim_path_ease_in_out);
     lv_anim_set_exec_cb(&a, anim_zoom_cb);
@@ -148,19 +149,21 @@ static void StartBreatheAnim(lv_obj_t *obj) {
 static void StopBreatheAnim(lv_obj_t *obj) {
     if (!obj) return;
     if (lv_obj_is_valid(obj) == false) return;
-    
+
     if (lv_anim_delete(obj, anim_zoom_cb)) {
-         lv_image_set_scale(obj, 256); // LVGL 9 使用 image_set_scale
+        lv_image_set_scale(obj, 256); // LVGL 9 使用 image_set_scale
     }
 }
 
-static void StartMoveAnim(lv_obj_t *obj, int x, int y, lv_anim_completed_cb_t completed_cb = nullptr) {
+static void
+StartMoveAnim(lv_obj_t *obj, int x, int y, lv_anim_completed_cb_t completed_cb = nullptr,
+              void *user_data = nullptr) {
     if (!obj) return;
     if (lv_obj_is_valid(obj) == false) return;
 
     int cur_x = lv_obj_get_x(obj);
     int cur_y = lv_obj_get_y(obj);
-    
+
     lv_anim_delete(obj, anim_x_cb);
     lv_anim_delete(obj, anim_y_cb);
 
@@ -183,6 +186,7 @@ static void StartMoveAnim(lv_obj_t *obj, int x, int y, lv_anim_completed_cb_t co
         if (cur_y == y && completed_cb) {
             // 如果 Y 轴不动，则在 X 轴完成时触发回调
             lv_anim_set_completed_cb(&a, completed_cb);
+            lv_anim_set_user_data(&a, user_data);
         }
         lv_anim_start(&a);
     }
@@ -198,14 +202,37 @@ static void StartMoveAnim(lv_obj_t *obj, int x, int y, lv_anim_completed_cb_t co
         if (completed_cb) {
             // 无论 X 轴是否动，在 Y 轴完成时触发回调是安全的
             lv_anim_set_completed_cb(&a, completed_cb);
+            lv_anim_set_user_data(&a, user_data);
         }
         lv_anim_start(&a);
     }
 }
 
+// 包装完成回调，先处理隐藏被吃棋子，再执行原始回调
+static void wrapped_anim_completed_cb(lv_anim_t *a) {
+    // 隐藏被吃的棋子
+    size_t piece_count = lv_pieces.size();
+    for (size_t i = 0; i < piece_count; i++) {
+        lv_piece *p = lv_pieces[i];
+        if (!p || !p->obj || lv_obj_is_valid(p->obj) == false) continue;
+        if (!p->ok) {
+            if (!lv_obj_has_flag(p->obj, LV_OBJ_FLAG_HIDDEN)) {
+                lv_obj_add_flag(p->obj, LV_OBJ_FLAG_HIDDEN);
+            }
+            StopBreatheAnim(p->obj);
+        }
+    }
+
+    // 执行原始回调
+    if (a && a->user_data) {
+        lv_anim_completed_cb_t original_cb = (lv_anim_completed_cb_t) a->user_data;
+        original_cb(a);
+    }
+}
+
 static void RefreshBoard(int mvAnim = 0, lv_anim_completed_cb_t completed_cb = nullptr) {
     int x, y, xx, yy, sq, pc;
-    
+
     // 增加对核心全局对象的有效性检查
     if (!lv_board || lv_pieces.empty()) return;
 
@@ -221,7 +248,7 @@ static void RefreshBoard(int mvAnim = 0, lv_anim_completed_cb_t completed_cb = n
     // 记录是否有动画正在进行
     bool any_anim = false;
     lv_obj_t *anim_target_obj = nullptr;
-    
+
     // 2. 第一遍扫描：优先匹配未移动的棋子（位置和类型都匹配）
     for (size_t i = 0; i < piece_count; i++) {
         lv_piece *p = lv_pieces[i];
@@ -233,16 +260,17 @@ static void RefreshBoard(int mvAnim = 0, lv_anim_completed_cb_t completed_cb = n
                 int visual_sq = Xqwl.bFlipped ? SQUARE_FLIP(p->sq) : p->sq;
                 xx = BOARD_EDGE_H + (FILE_X(visual_sq) - FILE_LEFT) * SQUARE_SIZE;
                 yy = BOARD_EDGE_V + (RANK_Y(visual_sq) - RANK_TOP) * SQUARE_SIZE;
-                
+
                 if (lv_obj_has_flag(p->obj, LV_OBJ_FLAG_HIDDEN)) {
                     lv_obj_remove_flag(p->obj, LV_OBJ_FLAG_HIDDEN);
                 }
-                
+
                 // 检查是否是本次移动的目标棋子
                 if (mvAnim != 0 && p->sq == DST(mvAnim)) {
                     any_anim = true;
                     anim_target_obj = p->obj;
-                    StartMoveAnim(p->obj, xx, yy, completed_cb);
+                    // 包装完成回调，先处理隐藏被吃棋子，再执行原始回调
+                    StartMoveAnim(p->obj, xx, yy, wrapped_anim_completed_cb, (void *) completed_cb);
                 } else {
                     StartMoveAnim(p->obj, xx, yy);
                 }
@@ -260,7 +288,7 @@ static void RefreshBoard(int mvAnim = 0, lv_anim_completed_cb_t completed_cb = n
             sq = COORD_XY(x, y);
             int logic_sq = Xqwl.bFlipped ? SQUARE_FLIP(sq) : sq;
             pc = pos.ucpcSquares[logic_sq];
-            
+
             if (pc != 0) {
                 bool matched = false;
                 for (size_t i = 0; i < piece_count; i++) {
@@ -270,7 +298,7 @@ static void RefreshBoard(int mvAnim = 0, lv_anim_completed_cb_t completed_cb = n
                         break;
                     }
                 }
-                
+
                 if (!matched) {
                     for (size_t i = 0; i < piece_count; i++) {
                         lv_piece *p = lv_pieces[i];
@@ -279,16 +307,18 @@ static void RefreshBoard(int mvAnim = 0, lv_anim_completed_cb_t completed_cb = n
                             p->sq = logic_sq;
                             xx = BOARD_EDGE_H + (x - FILE_LEFT) * SQUARE_SIZE;
                             yy = BOARD_EDGE_V + (y - RANK_TOP) * SQUARE_SIZE;
-                            
+
                             if (lv_obj_has_flag(p->obj, LV_OBJ_FLAG_HIDDEN)) {
                                 lv_obj_remove_flag(p->obj, LV_OBJ_FLAG_HIDDEN);
                             }
-                            
+
                             // 检查是否是本次移动的目标棋子
                             if (mvAnim != 0 && p->sq == DST(mvAnim)) {
                                 any_anim = true;
                                 anim_target_obj = p->obj;
-                                StartMoveAnim(p->obj, xx, yy, completed_cb);
+                                // 包装完成回调，先处理隐藏被吃棋子，再执行原始回调
+                                StartMoveAnim(p->obj, xx, yy, wrapped_anim_completed_cb,
+                                              (void *) completed_cb);
                             } else {
                                 StartMoveAnim(p->obj, xx, yy);
                             }
@@ -303,24 +333,24 @@ static void RefreshBoard(int mvAnim = 0, lv_anim_completed_cb_t completed_cb = n
             }
         }
     }
-    
+
     // 如果没有任何棋子触发动画且有完成回调，则立即执行回调
     if (!any_anim && completed_cb) {
+        // 先隐藏被吃的棋子
+        for (size_t i = 0; i < piece_count; i++) {
+            lv_piece *p = lv_pieces[i];
+            if (!p || !p->obj || lv_obj_is_valid(p->obj) == false) continue;
+            if (!p->ok) {
+                if (!lv_obj_has_flag(p->obj, LV_OBJ_FLAG_HIDDEN)) {
+                    lv_obj_add_flag(p->obj, LV_OBJ_FLAG_HIDDEN);
+                }
+                StopBreatheAnim(p->obj);
+            }
+        }
         completed_cb(nullptr);
     }
 
-    // 4. 处理隐藏和遮罩
-    for (size_t i = 0; i < piece_count; i++) {
-        lv_piece *p = lv_pieces[i];
-        if (!p || !p->obj || lv_obj_is_valid(p->obj) == false) continue;
-        if (!p->ok) {
-            if (!lv_obj_has_flag(p->obj, LV_OBJ_FLAG_HIDDEN)) {
-                lv_obj_add_flag(p->obj, LV_OBJ_FLAG_HIDDEN);
-            }
-            StopBreatheAnim(p->obj);
-        }
-    }
-
+    // 4. 处理选中遮罩
     if (lv_select && lv_obj_is_valid(lv_select)) {
         if (Xqwl.sqSelected == 0) {
             lv_obj_add_flag(lv_select, LV_OBJ_FLAG_HIDDEN);
@@ -341,7 +371,7 @@ static void DrawSquare(int sq, BOOL bSelected = FALSE) {
     sqFlipped = Xqwl.bFlipped ? SQUARE_FLIP(sq) : sq;
     xx = BOARD_EDGE_H + (FILE_X(sqFlipped) - FILE_LEFT) * SQUARE_SIZE;
     yy = BOARD_EDGE_V + (RANK_Y(sqFlipped) - RANK_TOP) * SQUARE_SIZE;
-    
+
     if (bSelected && lv_select) {
         lv_obj_set_pos(lv_select, xx, yy);
     }
@@ -350,23 +380,23 @@ static void DrawSquare(int sq, BOOL bSelected = FALSE) {
 // 电脑回应一步棋
 static void ResponseMove() {
     int vlRep;
-    
+
     // 移除之前的 lv_timer_handler()，防止在 timer 回调内部重入导致的崩溃
     SearchMain();
-    
+
     // 检查搜索结果是否合法
     if (Search.mvResult == 0) return;
 
     pos.MakeMove(Search.mvResult);
     Xqwl.mvLast = Search.mvResult;
-    
+
     // 电脑走棋完成后，开始电脑的动画
     RefreshBoard(Search.mvResult);
-    
+
     if (pos.Checked()) {
         MessageBoxMute("将军！");
     }
-    
+
     vlRep = pos.RepStatus(3);
     if (pos.IsMate()) {
         MessageBoxMute("请再接再厉！");
@@ -416,7 +446,7 @@ static void ClickSquare(int sq) {
             if (pos.MakeMove(mv)) {
                 Xqwl.mvLast = mv;
                 Xqwl.sqSelected = 0;
-                
+
                 // 1. 用户走子后，启动动画，并在动画完成后触发电脑响应
                 RefreshBoard(mv, [](lv_anim_t *a) {
                     // 2. 检查用户这一步是否将军
@@ -432,7 +462,8 @@ static void ClickSquare(int sq) {
                     } else if (vlRep > 0) {
                         vlRep = pos.RepValue(vlRep);
                         MessageBoxMute(vlRep > WIN_VALUE ? "长打作负，请不要气馁！" :
-                                       vlRep < -WIN_VALUE ? "电脑长打作负，祝贺你取得胜利！" : "双方不变作和，辛苦了！");
+                                       vlRep < -WIN_VALUE ? "电脑长打作负，祝贺你取得胜利！"
+                                                          : "双方不变作和，辛苦了！");
                         Xqwl.bGameOver = TRUE;
                     } else if (pos.nMoveNum > 100) {
                         MessageBoxMute("超过自然限着作和，辛苦了！");
@@ -477,11 +508,11 @@ static void DrawInitBoard() {
     }
 
     auto act = lv_scr_act();
-    
+
     // 2. 先解绑并删除所有的 lv_piece 结构体，然后再清理 LVGL 对象
     // 这样可以确保 LVGL 的清理过程不会触发任何已经失效的 struct 指针
     ClearAllPieces();
-    
+
     // 3. 清理屏幕上的所有 LVGL 对象
     lv_obj_clean(act);
     lv_board = nullptr;
@@ -534,7 +565,7 @@ static void DrawInitBoard() {
     lv_obj_set_style_text_font(label_restart, &teng_18, 0);
     lv_obj_center(label_restart);
     lv_obj_add_event_cb(btn_restart, [](lv_event_t *e) {
-        lv_chess_start(); 
+        lv_chess_start();
     }, LV_EVENT_CLICKED, nullptr);
 
     // 悔棋按钮
@@ -547,12 +578,12 @@ static void DrawInitBoard() {
     lv_obj_center(label_undo);
     lv_obj_add_event_cb(btn_undo, [](lv_event_t *e) {
         if (pos.nMoveNum > 2) {
-            pos.UndoMakeMove(); 
-            pos.UndoMakeMove(); 
+            pos.UndoMakeMove();
+            pos.UndoMakeMove();
             Xqwl.sqSelected = 0;
             Xqwl.mvLast = pos.mvsList[pos.nMoveNum - 1].wmv;
             Xqwl.bGameOver = FALSE;
-            RefreshBoard(); 
+            RefreshBoard();
         }
     }, LV_EVENT_CLICKED, nullptr);
 }
