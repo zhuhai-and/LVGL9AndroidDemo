@@ -1,3 +1,17 @@
+/**
+ * 中国象棋搜索引擎核心实现（头文件）。
+ *
+ * 本文件包含完整的象棋 AI 引擎，主要模块：
+ *   - 棋盘表示：256 格一维数组，16×16 布局
+ *   - 走法生成：各棋子的合法走法生成
+ *   - 局面评估：子力价值 + 位置价值表
+ *   - 搜索算法：Alpha-Beta 剪枝 + PVS + 空步裁剪
+ *   - 着法排序：置换表启发 + 杀手走法 + 历史表 + MVV/LVA
+ *   - 置换表：Zobrist 哈希 + 双锁校验
+ *   - 开局库：内置 600 条开局数据，支持局面镜像
+ *
+ * 算法参考：象棋小巫师（xqbase）
+ */
 #ifndef LVGL_XQWL_H
 #define LVGL_XQWL_H
 
@@ -5,6 +19,7 @@
 #include <cstdio>
 #include <cstring>
 #include <ctime>
+#include <unistd.h>
 #include "BookData.h"
 
 #ifdef __cplusplus
@@ -43,7 +58,7 @@ const int PIECE_PAWN = 6;
 // 其他常数
 const int MAX_GEN_MOVES = 128; // 最大的生成走法数
 const int MAX_MOVES = 1024;     // 最大的历史走法数
-const int LIMIT_DEPTH = 4;    // 最大的搜索深度
+int LIMIT_DEPTH = 4;           // 最大的搜索深度（可运行时调整）
 const int MATE_VALUE = 10000;  // 最高分值，即将死的分值
 const int BAN_VALUE = MATE_VALUE - 100; // 长将判负的分值，低于该值将不写入置换表
 const int WIN_VALUE = MATE_VALUE - 200; // 搜索出胜负的分值界限，超出此值就说明已经搜索出杀棋了
@@ -1649,6 +1664,27 @@ static void Startup(void) {
     pos.Startup();
     Xqwl.sqSelected = Xqwl.mvLast = 0;
     Xqwl.bGameOver = FALSE;
+}
+
+/**
+ * 根据设备 CPU 核心数自动设置搜索深度。
+ * 核心数越多，搜索深度越深，AI 棋力越强。
+ *   - 4 核以下：深度 3（低端设备）
+ *   - 4~7 核：  深度 4（中端设备，默认值）
+ *   - 8 核以上： 深度 5（高端设备）
+ */
+static void AutoSetSearchDepth(void) {
+    long cpu_count = sysconf(_SC_NPROCESSORS_ONLN);
+    if (cpu_count <= 0) {
+        LIMIT_DEPTH = 4;  // 默认值
+    } else if (cpu_count < 4) {
+        LIMIT_DEPTH = 3;  // 低端设备
+    } else if (cpu_count < 8) {
+        LIMIT_DEPTH = 4;  // 中端设备
+    } else {
+        LIMIT_DEPTH = 5;  // 高端设备
+    }
+    printf("Search depth set to %d (CPU cores: %ld)\n", LIMIT_DEPTH, cpu_count);
 }
 
 #ifdef __cplusplus

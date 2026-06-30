@@ -5,17 +5,23 @@
 # For more details, see
 #   http://developer.android.com/guide/developing/tools/proguard.html
 
-# If your project uses WebView with JS, uncomment the following
-# and specify the fully qualified class name to the JavaScript interface
-# class:
-#-keepclassmembers class fqcn.of.javascript.interface.for.webview {
-#   public *;
-#}
+# Preserve line numbers for debugging stack traces
+-keepattributes SourceFile,LineNumberTable
+-renamesourcefileattribute SourceFile
 
-# Uncomment this to preserve the line number information for
-# debugging stack traces.
-#-keepattributes SourceFile,LineNumberTable
+# Keep JNI native methods and their containing class
+-keep class com.hzy.lvgl.demo.LVApp { *; }
+-keepclassmembers class com.hzy.lvgl.demo.LVApp {
+    native <methods>;
+}
 
-# If you keep the line number information, uncomment this to
-# hide the original source file name.
-#-renamesourcefileattribute SourceFile
+# Keep all classes with native methods
+-keepclasseswithmembernames class * {
+    native <methods>;
+}
+
+# Keep ViewBinding generated classes
+-keep class com.hzy.lvgl.demo.databinding.** { *; }
+
+# Keep model classes used in serialization
+-keep class com.hzy.lvgl.demo.model.** { *; }

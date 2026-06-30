@@ -3,6 +3,13 @@
 
 #include <jni.h>
 
+/**
+ * Native 日志宏定义。
+ *
+ * 在 Release 构建（定义了 NDEBUG）时，所有日志宏被禁用为空操作，
+ * 避免日志输出带来的性能开销。
+ * 在 Debug 构建时，日志通过 Android logcat 输出，TAG 为 "NATIVE.LOG"。
+ */
 #ifdef NDEBUG
 #define LOGD(...) do{}while(0)
 #define LOGI(...) do{}while(0)

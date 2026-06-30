@@ -11,11 +11,16 @@ import com.hzy.lvgl.demo.model.DemoEntry;
 
 import java.util.List;
 
+/**
+ * Demo 列表的 RecyclerView 适配器。
+ * 每个列表项显示 Demo 标题和分辨率描述，点击时触发回调。
+ */
 public class DemoAdapter extends RecyclerView.Adapter<DemoAdapter.DemoViewHolder> {
 
     private final List<DemoEntry> data;
     private final OnItemClickListener listener;
 
+    /** 列表项点击回调接口 */
     public interface OnItemClickListener {
         void onItemClick(DemoEntry entry);
     }
@@ -54,7 +59,6 @@ public class DemoAdapter extends RecyclerView.Adapter<DemoAdapter.DemoViewHolder
         public void bind(DemoEntry entry, OnItemClickListener listener) {
             binding.tvTitle.setText(entry.getTitle());
             String desc = entry.getWidth() + "x" + entry.getHeight();
-            // You can add more info to description if needed
             binding.tvDesc.setText(desc);
             binding.getRoot().setOnClickListener(v -> listener.onItemClick(entry));
         }

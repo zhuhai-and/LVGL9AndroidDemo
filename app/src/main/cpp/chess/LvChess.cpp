@@ -1,3 +1,15 @@
+/**
+ * 中国象棋 LVGL Demo 实现。
+ *
+ * 本文件实现象棋游戏的 UI 逻辑，包括：
+ *   - 棋盘和棋子的绘制
+ *   - 棋子移动动画（平移、呼吸效果）
+ *   - 触摸点击事件处理
+ *   - 与 AI 引擎的交互（走棋、悔棋、重新开始）
+ *   - 游戏状态提示（将军、胜负、和棋）
+ *
+ * AI 引擎实现在 XQWL.h 中，包含 Alpha-Beta 搜索、置换表、开局库等。
+ */
 #include "LvChess.h"
 #include "XQWL.h"
 #include <map>
@@ -589,13 +601,19 @@ static void DrawInitBoard() {
 }
 
 //开始游戏
+/**
+ * 象棋 Demo 入口函数，由 AppList.h 映射表调用。
+ * 执行初始化流程：Zobrist 表 → 开局库 → 棋盘状态 → UI 绘制。
+ * 也可通过「重新开始」按钮重复调用以重置游戏。
+ */
 void lv_chess_start() {
-    InitZobrist();
-    LoadBook();
-    Xqwl.bFlipped = FALSE;
-    Xqwl.sqSelected = 0;
-    Xqwl.mvLast = 0;
-    Xqwl.bGameOver = FALSE;
-    Startup();
-    DrawInitBoard();
+    AutoSetSearchDepth();  // 根据设备 CPU 核心数自动设置搜索深度
+    InitZobrist();   // 初始化 Zobrist 哈希表（用于置换表和重复检测）
+    LoadBook();       // 加载开局库
+    Xqwl.bFlipped = FALSE;         // 棋盘不翻转
+    Xqwl.sqSelected = 0;           // 清除选中状态
+    Xqwl.mvLast = 0;               // 清除上一步走法
+    Xqwl.bGameOver = FALSE;        // 重置游戏结束标志
+    Startup();        // 初始化棋盘局面
+    DrawInitBoard();  // 绘制棋盘和棋子
 }
